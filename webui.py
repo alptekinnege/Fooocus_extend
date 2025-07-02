@@ -59,6 +59,7 @@ from extentions.inswapper import face_swap
 from extentions.CodeFormer import codeformer
 import extentions.instantid.main as instantid
 import extentions.photomaker.app as photomaker
+from extentions import model_downloader_ext # Added for Model Downloader Extension
 obp_prompt=[]
 
 
@@ -77,28 +78,28 @@ def html_load(url,file):
                                 height = '1080px'></iframe>''')
 def xyz_plot_ext(currentTask):
     global finished_batch
-    finished_batch=False    
+    finished_batch=False
     currentTask.generate_image_grid=False
     currentTask.image_number=1
     currentTask.prompt=currentTask.original_prompt
     currentTask.negative_prompt=currentTask.original_negative
-    xyz_results,xyz_task,x_labels,y_labels,z_labels,list_size,ix,iy,iz,xs,ys,zs=xyz.run(currentTask) 
+    xyz_results,xyz_task,x_labels,y_labels,z_labels,list_size,ix,iy,iz,xs,ys,zs=xyz.run(currentTask)
     temp_var=[]
     for i, currentTask in enumerate(xyz_task):
         currentTask.results+=temp_var
         print(f"\033[91m[X/Y/Z Plot] Image Generation {i + 1}:\033[0m")
-        gr.Info(f"[X/Y/Z Plot] Image Generation {i + 1}") 
+        gr.Info(f"[X/Y/Z Plot] Image Generation {i + 1}")
         if not finished_batch:
             if currentTask.translate_enabled:
-                  positive, negative = translate(currentTask.prompt, currentTask.negative_prompt, currentTask.srcTrans, currentTask.toTrans)            
+                  positive, negative = translate(currentTask.prompt, currentTask.negative_prompt, currentTask.srcTrans, currentTask.toTrans)
                   currentTask.prompt = positive
                   currentTask.negative_prompt = negative
             if currentTask.always_random:
                   currentTask.seed=int (random.randint(constants.MIN_SEED, constants.MAX_SEED))
             yield from generate_clicked(currentTask)
             temp_var=currentTask.results
-    gr.Info(f"[X/Y/Z Plot] Grid generation") 
-    xyz.draw_grid(x_labels,y_labels,z_labels,list_size,ix,iy,iz,xs,ys,zs,currentTask,xyz_results)  
+    gr.Info(f"[X/Y/Z Plot] Grid generation")
+    xyz.draw_grid(x_labels,y_labels,z_labels,list_size,ix,iy,iz,xs,ys,zs,currentTask,xyz_results)
     return
 
 def obp_start(p):
@@ -138,7 +139,7 @@ def obp_start(p):
     insanitylevel=p.insanitylevel
     amountofimages=p.amountofimages
     size=p.size
-    
+
     sect_models=ob_prompt.modellist
     cur_sect_models=p.model
     model_list=modules.config.model_filenames
@@ -158,7 +159,7 @@ def obp_start(p):
             randomprompt = ob_prompt.createpromptvariant(workprompt, promptvariantinsanitylevel)
             print("Using provided workflow prompt")
             print(randomprompt)
-        else:    
+        else:
                 randompromptlist = ob_prompt.build_dynamic_prompt(insanitylevel,subject,artist,imagetype, False,antistring,prefixprompt,suffixprompt,promptcompounderlevel, seperator,givensubject,smartsubject,giventypeofimage,imagemodechance, gender, chosensubjectsubtypeobject, chosensubjectsubtypehumanoid, chosensubjectsubtypeconcept,True,False,-1,givenoutfit, prompt_g_and_l=True, base_model_obp=base_model_obp, OBP_preset=OBP_preset, prompt_enhancer=promptenhancer, preset_prefix=presetprefix, preset_suffix=presetsuffix)
                 randomprompt = randompromptlist[0]
                 randomsubject = randompromptlist[1]
@@ -207,18 +208,18 @@ def civitai_helper_nsfw(black_out_nsfw):
 civitai_helper_nsfw(modules.config.default_black_out_nsfw)
 def get_task(*args):
     argsList = list(args)
-    toT = argsList.pop() 
-    srT = argsList.pop() 
-    trans_enable = argsList.pop() 
-    if trans_enable:      
-            positive, negative = translate(argsList[2], argsList[3], srT, toT)            
+    toT = argsList.pop()
+    srT = argsList.pop()
+    trans_enable = argsList.pop()
+    if trans_enable:
+            positive, negative = translate(argsList[2], argsList[3], srT, toT)
             argsList[2] = positive
-            argsList[3] = negative          
+            argsList[3] = negative
     args = tuple(argsList)
     args = list(args)
     args.pop(0)
     return worker.AsyncTask(args=args)
-     
+
 def im_batch_run(p):
     global finished_batch
     finished_batch=False
@@ -227,12 +228,12 @@ def im_batch_run(p):
     check=p.input_image_checkbox
     passed=1
     for f_name in batch_files:
-      if not finished_batch:  
+      if not finished_batch:
         pc = copy.deepcopy(p)
         img = Image.open('./batch_images/'+f_name)
         if not p.input_image_checkbox:
             p.cn_tasks = {x: [] for x in flags.ip_list}
-        if p.image_action == 'Upscale': 
+        if p.image_action == 'Upscale':
               p.uov_input_image=np.array(img)
               p.uov_method = p.upscale_mode
               p.current_tab = 'uov'
@@ -252,13 +253,13 @@ def im_batch_run(p):
                   img = img.resize((w, h), Image.LANCZOS)
               p.cn_tasks[p.image_mode].append([np.array(img), p.ip_stop_batch, p.ip_weight_batch])
         print (f"\033[91m[Images QUEUE] {passed} / {batch_all}. Filename: {f_name} \033[0m")
-        gr.Info(f"Image Batch: start element generation {passed}/{batch_all}. Filename: {f_name}") 
+        gr.Info(f"Image Batch: start element generation {passed}/{batch_all}. Filename: {f_name}")
         passed+=1
         p.input_image_checkbox=True
         if p.translate_enabled:
                   positive, negative = translate(p.prompt, p.negative_prompt, p.srcTrans, p.toTrans)
                   p.prompt = positive
-                  p.negative_prompt = negative        
+                  p.negative_prompt = negative
         yield from generate_clicked(p)
         p = copy.deepcopy(pc)
         if p.seed_random:
@@ -275,7 +276,7 @@ def pr_batch_start(p):
   passed=1
   while batch_prompt and not finished_batch:
       print (f"\033[91m[Prompts QUEUE] Element #{passed}/{batch_len} \033[0m")
-      gr.Info(f"Prompt Batch: start element generation {passed}/{batch_len}") 
+      gr.Info(f"Prompt Batch: start element generation {passed}/{batch_len}")
       one_batch_args=batch_prompt.pop()
       if p.positive_batch=='Prefix':
         p.prompt= p.original_prompt + one_batch_args[0]
@@ -299,7 +300,7 @@ def pr_batch_start(p):
       if p.seed_random:
         p.seed=int (random.randint(constants.MIN_SEED, constants.MAX_SEED))
       passed+=1
-  return 
+  return
 
 def generate_clicked(task: worker.AsyncTask):
     import ldm_patched.modules.model_management as model_management
@@ -673,7 +674,7 @@ with shared.gradio_root:
                         metadata_input_image.upload(trigger_metadata_preview, inputs=metadata_input_image,
                                                     outputs=metadata_json, queue=False, show_progress=True)
 
-                    
+
 
 
 
@@ -849,7 +850,7 @@ with shared.gradio_root:
             ip_tab.select(lambda: 'ip', outputs=current_tab, queue=False, _js=down_js, show_progress=False)
             describe_tab.select(lambda: 'desc', outputs=current_tab, queue=False, _js=down_js, show_progress=False)
             with gr.Row(elem_classes='extend_row'):
-              with gr.Accordion('Extention', open=False):
+              with gr.Accordion('Extention', open=False): # This is the main "Extention" accordion
                 with gr.Accordion('in generation', open=False,elem_classes="nested-accordion") as gen_acc:
                         with gr.TabItem(label='Prompt Translate') as promp_tr_tab:
                             langs_sup = GoogleTranslator().get_supported_languages(as_dict=True)
@@ -859,29 +860,29 @@ with shared.gradio_root:
                                 if src != 'auto' and src != dest:
                                     return [src, dest]
                                 return ['en','auto']
-                        
+
                             def show_viewtrans(checkbox):
-                                return {viewstrans: gr.update(visible=checkbox)} 
-                                       
+                                return {viewstrans: gr.update(visible=checkbox)}
+
                             with gr.Row():
                                 translate_enabled = gr.Checkbox(label='Enable translate', value=False, elem_id='translate_enabled_el')
                             with gr.Row():
-                                gtrans = gr.Button(value="Translate")        
+                                gtrans = gr.Button(value="Translate")
 
                                 srcTrans = gr.Dropdown(['auto']+langs_sup, value='auto', label='From', interactive=True)
                                 toTrans = gr.Dropdown(langs_sup, value='en', label='To', interactive=True)
                                 change_src_to = gr.Button(value="🔃")
-                            
+
                             with gr.Row():
-                                adv_trans = gr.Checkbox(label='See translated prompts after click Generate', value=False)          
-                            
+                                adv_trans = gr.Checkbox(label='See translated prompts after click Generate', value=False)
+
                             with gr.Box(visible=False) as viewstrans:
                                 gr.Markdown('Tranlsated prompt & negative prompt')
                                 with gr.Row():
                                     p_tr = gr.Textbox(label='Prompt translate', show_label=False, value='', lines=2, placeholder='Translated text prompt')
 
-                                with gr.Row():            
-                                    p_n_tr = gr.Textbox(label='Negative Translate', show_label=False, value='', lines=2, placeholder='Translated negative text prompt')             
+                                with gr.Row():
+                                    p_n_tr = gr.Textbox(label='Negative Translate', show_label=False, value='', lines=2, placeholder='Translated negative text prompt')
                             gr.HTML('* \"Prompt Translate\" is powered by AlekPet. <a href="https://github.com/AlekPet/Fooocus_Extensions_AlekPet" target="_blank">\U0001F4D4 Document</a>')
                         with gr.TabItem(label='Photomaker') as photomaker_tab:
                             enable_pm,files,style_strength_ratio,enable_doodle,sketch_image,adapter_conditioning_scale,adapter_conditioning_factor = photomaker.gui()
@@ -906,9 +907,9 @@ with shared.gradio_root:
                 enable_instant.change(gen_acc_name,inputs=[translate_enabled,enable_pm,enable_instant,inswapper_enabled,codeformer_gen_enabled],
                         outputs=[gen_acc],queue=False)
 
-                
-                
-                
+
+
+
                 with gr.Accordion('modules', open=False,elem_classes="nested-accordion"):
                   with gr.TabItem(label='Image Batch') as im_batch:
                         def unzip_file(zip_file_obj):
@@ -934,7 +935,7 @@ with shared.gradio_root:
                         def clear_outputs():
                             directory=modules.config.path_outputs
                             delete_out(directory)
-                            return 
+                            return
                         def output_zip():
                             directory=modules.config.path_outputs
                             zip_file='outputs.zip'
@@ -951,11 +952,11 @@ with shared.gradio_root:
                             if not finished_batch:
                               directory=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'batch_images')
                               delete_out(directory)
-                            return 
-                       
+                            return
+
                         with gr.Row():
                           with gr.Column():
-                            file_in=gr.File(label="Upload a ZIP file",file_count='single',file_types=['.zip'])                            
+                            file_in=gr.File(label="Upload a ZIP file",file_count='single',file_types=['.zip'])
                             def update_radio(value):
                               return gr.update(value=value)
                             ratio = gr.Radio(label='Scale method:', choices=['NOT scale','to ORIGINAL','to OUTPUT'], value='NOT scale', interactive=True)
@@ -967,7 +968,7 @@ with shared.gradio_root:
                             upscale_mode = gr.Dropdown(choices=flags.uov_list, value=flags.uov_list[0], label='Method',interactive=True,visible=False)
                           with gr.Column():
                             file_out=gr.File(label="Download a ZIP file", file_count='single')
-                            
+
                         with gr.Row():
                           batch_start = gr.Button(value='Start batch', visible=True)
                           save_output = gr.Button(value='Output --> ZIP')
@@ -986,7 +987,7 @@ with shared.gradio_root:
 
                         image_action.change(image_action_change, inputs=[image_action], outputs=[image_mode,ip_stop_batch,ip_weight_batch,upscale_mode],queue=False, show_progress=False)
                         image_mode.change(image_mode_change,inputs=[image_mode],outputs=[ip_stop_batch,ip_weight_batch],queue=False, show_progress=False)
- 
+
                         clear_output.click(lambda: (gr.update(interactive=False)),outputs=[clear_output]) \
                                     .then(clear_outputs) \
                                     .then(lambda: (gr.update(interactive=True)),outputs=[clear_output])
@@ -1030,8 +1031,8 @@ with shared.gradio_root:
                                 lines = [line.strip() for line in f.readlines()]
                                 data = []
                                 i = 0
-                                if not pos_only:  
-                                    
+                                if not pos_only:
+
                                     while i < len(lines):
                                         if lines[i] == "":
                                             i += 1
@@ -1042,7 +1043,7 @@ with shared.gradio_root:
                                         else:
                                             data.append([lines[i], ""])
                                             i += 1
-                                   
+
                                 else:
                                     while i< len(lines):
                                         if lines[i] == "":
@@ -1074,7 +1075,7 @@ with shared.gradio_root:
                                 with gr.Row():
                                     presetprefix = gr.Textbox(label="Preset prefix: ", value="")
                                     presetsuffix = gr.Textbox(label="Preset suffix: ", value="")
-                                
+
                             with gr.Group(visible=False) as maingroup:
                                 gr.Markdown('<font size="2">Type a name and press "Save as Preset" to store the current generation settings.</font>')
                                 with gr.Row():
@@ -1087,15 +1088,15 @@ with shared.gradio_root:
                                             value="Save as preset",
                                             visible=True)
                                 gr.Markdown('<font size="4">Generation settings:</font>')
-            
+
             # End of this part of presets
-                
+
                                 with gr.Row(variant="compact"):
                                     insanitylevel = gr.Slider(1, 10, value=5, step=1, label="Higher levels increases complexity and randomness of generated prompt",interactive=True)
                                 with gr.Row(variant="compact"):
                                     with gr.Column(variant="compact"):
                                         subject = gr.Dropdown(
-                                            ob_prompt.subjects, label="Subject Types", value="all",interactive=True)                   
+                                            ob_prompt.subjects, label="Subject Types", value="all",interactive=True)
                                     with gr.Column(variant="compact"):
                                         artist = gr.Dropdown(
                                             ob_prompt.artists, label="Artists", value="all",interactive=True)
@@ -1180,7 +1181,7 @@ with shared.gradio_root:
                                     with gr.Column(variant="compact"):
                                         prompt5toworkflow = gr.Button("prompt5->Workflow Prompt")
                                         prompt5toprompt = gr.Button("prompt5->Prompt")
-                            
+
                         with gr.Tab("Advanced"):
                             with gr.Row(variant="compact"):
                                 gr.Markdown(ob_prompt.adv_mark1)
@@ -1202,7 +1203,7 @@ with shared.gradio_root:
                             with gr.Row(variant="compact"):
                                 with gr.Column(variant="compact"):
                                     seperator = gr.Dropdown(
-                                        ob_prompt.seperatorlist, label="Prompt seperator", value="comma")    
+                                        ob_prompt.seperatorlist, label="Prompt seperator", value="comma")
                                 with gr.Column(variant="compact"):
                                     ANDtoggle = gr.Dropdown(
                                         ob_prompt.ANDtogglemode, label="Prompt seperator mode", value="none",interactive=True)
@@ -1211,13 +1212,13 @@ with shared.gradio_root:
                         with gr.Tab("Negative prompt"):
                             gr.Markdown("### Negative prompt settings")
                             with gr.Column(variant="compact"):
-                                with gr.Row(variant="compact"): 
-                                    autonegativeprompt = gr.Checkbox(label="Auto generate negative prompt", value=True,interactive=True) 
+                                with gr.Row(variant="compact"):
+                                    autonegativeprompt = gr.Checkbox(label="Auto generate negative prompt", value=True,interactive=True)
                                     autonegativepromptenhance = gr.Checkbox(label="Enable base enhancement prompt", value=False)
-                            with gr.Row(variant="compact"): 
+                            with gr.Row(variant="compact"):
                                 autonegativepromptstrength = gr.Slider(0, 10, value="0", step=1, label="Randomness of negative prompt (lower is more consistency)",interactive=True)
-                            
-                 
+
+
                         with gr.Tab("One Button Run"):
                             with gr.Row(variant="compact"):
                                 with gr.Column(variant="compact"):
@@ -1230,9 +1231,9 @@ with shared.gradio_root:
                             with gr.Row(variant="compact"):
                                     with gr.Column(variant="compact"):
                                         start_obp = gr.Button("Start generating")
-                                        
+
                         gr.HTML('* \"OneButtonPrompt\" is powered by AIrjen. <a href="https://github.com/AIrjen/OneButtonPrompt" target="_blank">\U0001F4D4 Document</a>')
-                        gr.HTML('* Adaptation for Fooocus is powered by Shahmatist^RMDA')   
+                        gr.HTML('* Adaptation for Fooocus is powered by Shahmatist^RMDA')
                         OBP_preset.change(ob_prompt.obppreset_changed,inputs=[OBP_preset],
                               outputs=[obp_preset_name,maingroup,presetgroup,presetprefix,presetsuffix])
                         OBP_preset.change(ob_prompt.OBPPreset_changed_update_custom,inputs=[OBP_preset],
@@ -1247,7 +1248,7 @@ with shared.gradio_root:
                         subject.change(ob_prompt.subjectsvalueforsubtypeobject,[subject],[chosensubjectsubtypeobject])
                         subject.change(ob_prompt.subjectsvalueforsubtypeconcept,[subject],[chosensubjectsubtypeconcept])
                         subject.change(ob_prompt.subjectsvalueforsubtypeobject,[subject],[chosensubjectsubtypehumanoid])
-                        
+
                         prompt1toworkflow.click(ob_prompt.prompttoworkflowprompt, inputs=prompt1, outputs=workprompt)
                         prompt1toprompt.click(ob_prompt.prompttoworkflowprompt, inputs=prompt1, outputs=prompt)
                         prompt2toworkflow.click(ob_prompt.prompttoworkflowprompt, inputs=prompt2, outputs=workprompt)
@@ -1271,11 +1272,13 @@ with shared.gradio_root:
                         GeekyRemBExtras.on_ui_tabs()
 
                 with gr.Accordion('tools', open=False,elem_classes="nested-accordion"):
+                  with gr.TabItem(label='Model Downloader'): # New Tab for our extension
+                    model_downloader_ext.downloader_ui()
                   with gr.TabItem(label='Civitai_helper') as download_tab:
                         civitai_helper.civitai_help()
 
                   with gr.TabItem(label='TextMask') as text_mask:
-                    mask=gr.HTML()                  
+                    mask=gr.HTML()
 
 
 
@@ -1294,9 +1297,9 @@ with shared.gradio_root:
                     with gr.Row():
                           photopea = gr.HTML(
                             f'''
-                            <iframe id='{PHOTOPEA_IFRAME_ID}' 
-                            src = '{PHOTOPEA_MAIN_URL}{get_photopea_url_params()}' 
-                            width = '{PHOTOPEA_IFRAME_WIDTH}' 
+                            <iframe id='{PHOTOPEA_IFRAME_ID}'
+                            src = '{PHOTOPEA_MAIN_URL}{get_photopea_url_params()}'
+                            width = '{PHOTOPEA_IFRAME_WIDTH}'
                             height = '{PHOTOPEA_IFRAME_HEIGHT}'
                             onload = '{PHOTOPEA_IFRAME_LOADED_EVENT}(this)'>'''
                           )
@@ -1327,7 +1330,7 @@ with shared.gradio_root:
                                                        value=modules.config.default_aspect_ratio,
                                                        info='width × height',
                                                        elem_classes='aspect_ratios_news')
-                    
+
 
                     aspect_ratios_selection.change(lambda x: None, inputs=aspect_ratios_selection, queue=False, show_progress=False, _js='(x)=>{refresh_aspect_ratios_label(x);}')
                     shared.gradio_root.load(lambda x: None, inputs=aspect_ratios_selection, queue=False, show_progress=False, _js='(x)=>{refresh_aspect_ratios_label(x);}')
@@ -1355,18 +1358,18 @@ with shared.gradio_root:
                         global swap_def, ar_def
                         swap_def=not swap_def
                         ar_def[0], ar_def[1] = ar_def[1], ar_def[0]
-                        width, height = height, width                       
+                        width, height = height, width
                         if swap_def:
                           choices=choices_ar2
                           interact1, interact2 = False, True
                           name='Landscape'
-                        else: 
+                        else:
                           choices=choices_ar1
                           interact1, interact2 = True, False
                           name = 'Portrait'
                         if lock != "Any":
                           ratio_x, ratio_y = lock.replace(':', ' ').split(' ')[:2]
-                          lock=str(ratio_y)+":"+str(ratio_x) 
+                          lock=str(ratio_y)+":"+str(ratio_x)
                           interact1, interact2 = True, False
                         if lock == "Any":
                           interact1, interact2 = True, True
@@ -1381,7 +1384,7 @@ with shared.gradio_root:
                         if lock != "Any":
                           width=height / ar_def[1] * ar_def[0]
                         return gr.update (value=width)
-                    def set_to_ar(aspect_ratios_selection,width,height): 
+                    def set_to_ar(aspect_ratios_selection,width,height):
                         g = math.gcd(width, height)
                         selector=f'{width}×{height}  \U00002223 {width // g}:{height // g}'
                         if aspect_ratios_selection==modules.config.available_aspect_ratios_labels[-2]:
@@ -1452,7 +1455,7 @@ with shared.gradio_root:
                     style_sorter.all_styles=[]
                     styles_path = os.path.join(os.path.dirname(__file__), 'sdxl_styles/')
                     modules.sdxl_styles.styles = {}
-                    
+
                     styles_files = get_files_from_folder(styles_path, ['.json'])
 
                     for x in ['sdxl_styles_fooocus.json',
@@ -1560,7 +1563,7 @@ with shared.gradio_root:
                                       value=modules.config.default_sample_sharpness,
                                       info='Higher value means image and texture are sharper.')
                 gr.HTML('<a href="https://github.com/lllyasviel/Fooocus/discussions/117" target="_blank">\U0001F4D4 Documentation</a>')
-                
+
                 dev_mode = gr.Checkbox(label='Developer Debug Mode', value=modules.config.default_developer_debug_mode_checkbox, container=False)
 
                 with gr.Column(visible=modules.config.default_developer_debug_mode_checkbox) as dev_tools:
@@ -1674,7 +1677,7 @@ with shared.gradio_root:
                                                             step=1, value=64)
                             canny_high_threshold = gr.Slider(label='Canny High Threshold', minimum=1, maximum=255,
                                                              step=1, value=128)
-                        
+
 
                     with gr.Tab(label='Inpaint'):
                         debugging_inpaint_preprocessor = gr.Checkbox(label='Debug Inpaint Preprocessing', value=False)
@@ -1748,7 +1751,7 @@ with shared.gradio_root:
                       path_change=gr.Button(value='Apply change paths')
                       preset_name = gr.Textbox(label='Filename new preset', show_label=True, interactive=True)
                       save_preset_button=gr.Button(value='Save preset')
-                
+
                       preset_have = gr.Dropdown(label='Preset',
                                                    choices=modules.config.available_presets,
                                                    value=args_manager.args.preset if args_manager.args.preset else "initial",
@@ -1846,12 +1849,12 @@ with shared.gradio_root:
         def seeTranlateAfterClick(adv_trans, prompt, negative_prompt="", srcTrans="auto", toTrans="en"):
             if(adv_trans):
                 positive, negative = translate(prompt, negative_prompt, srcTrans, toTrans)
-                return [positive, negative]   
+                return [positive, negative]
             return ["", ""]
-        
+
         gtrans.click(translate, inputs=[prompt, negative_prompt, srcTrans, toTrans], outputs=[prompt, negative_prompt])
         gtrans.click(translate, inputs=[prompt, negative_prompt, srcTrans, toTrans], outputs=[p_tr, p_n_tr])
-        
+
         change_src_to.click(change_lang, inputs=[srcTrans,toTrans], outputs=[toTrans,srcTrans])
         adv_trans.change(show_viewtrans, inputs=adv_trans, outputs=[viewstrans])
 
@@ -1939,7 +1942,7 @@ with shared.gradio_root:
 
         metadata_import_button.click(trigger_metadata_import, inputs=[metadata_input_image, state_is_generating], outputs=load_data_outputs, queue=False, show_progress=True) \
             .then(style_sorter.sort_styles, inputs=style_selections, outputs=style_selections, queue=False, show_progress=False)
-        
+
         ctrls += [x_type, x_values, x_values_dropdown, y_type, y_values, y_values_dropdown, z_type, z_values, z_values_dropdown, draw_legend, include_lone_images, include_sub_grids, no_fixed_seeds, vary_seeds_x, vary_seeds_y, vary_seeds_z, margin_size, csv_mode,grid_theme,always_random]
         ctrls += [translate_enabled, srcTrans, toTrans, prompt, negative_prompt]
         ctrls += [model,base_model,size,amountofimages,insanitylevel,subject, artist, imagetype, silentmode, workprompt, antistring, prefixprompt, suffixprompt,promptcompounderlevel, seperator, givensubject,smartsubject,giventypeofimage,imagemodechance, chosengender, chosensubjectsubtypeobject, chosensubjectsubtypehumanoid, chosensubjectsubtypeconcept, promptvariantinsanitylevel, givenoutfit, autonegativeprompt, autonegativepromptstrength, autonegativepromptenhance, base_model_obp, OBP_preset, amountoffluff, promptenhancer, presetprefix, presetsuffix,seed_random]
@@ -1972,9 +1975,9 @@ with shared.gradio_root:
                 ctrl.append(temp_list)
             ctrl.reverse()
             name=argsList.pop()
-            toT = argsList.pop() 
-            srT = argsList.pop() 
-            trans_enable = argsList.pop() 
+            toT = argsList.pop()
+            srT = argsList.pop()
+            trans_enable = argsList.pop()
             args = tuple(argsList)
             args = list(args)
             args.pop(0)
@@ -2008,7 +2011,7 @@ with shared.gradio_root:
                 try:
                     os.remove('presets/' + preset + '.json')
                 except Exception as e:
-                    print(f"Error: {e}")  
+                    print(f"Error: {e}")
             else:
                 print(f"Do not delete '{preset}'.")
             return
@@ -2019,7 +2022,7 @@ with shared.gradio_root:
 	                   .then(refresh_files_clicked, [], refresh_files_output + lora_ctrls,queue=False, show_progress=False) \
 	                   .then(lambda: (gr.update(value=''),gr.update(choices=modules.config.available_presets, value='initial')),outputs=[preset_name,preset_have])
 
-        
+
         def reverse_path(path):
             if '\\' in path:
                 return path.replace('\\', '\\\\')
@@ -2050,7 +2053,7 @@ with shared.gradio_root:
             .then(refresh_files_clicked, [], refresh_files_output + lora_ctrls,queue=False, show_progress=False)
 
         genprom.click(ob_translate,inputs=[workprompt,translate_enabled, srcTrans, toTrans],outputs=workprompt) \
-            .then (ob_prompt.gen_prompt, inputs=[insanitylevel,subject, artist, imagetype, antistring,prefixprompt, suffixprompt,promptcompounderlevel, seperator, givensubject,smartsubject,giventypeofimage,imagemodechance, chosengender, chosensubjectsubtypeobject, chosensubjectsubtypehumanoid, chosensubjectsubtypeconcept, givenoutfit, base_model_obp, OBP_preset, amountoffluff, promptenhancer, presetprefix, presetsuffix,silentmode,workprompt,promptvariantinsanitylevel], 
+            .then (ob_prompt.gen_prompt, inputs=[insanitylevel,subject, artist, imagetype, antistring,prefixprompt, suffixprompt,promptcompounderlevel, seperator, givensubject,smartsubject,giventypeofimage,imagemodechance, chosengender, chosensubjectsubtypeobject, chosensubjectsubtypehumanoid, chosensubjectsubtypeconcept, givenoutfit, base_model_obp, OBP_preset, amountoffluff, promptenhancer, presetprefix, presetsuffix,silentmode,workprompt,promptvariantinsanitylevel],
                   outputs=[prompt1, prompt2, prompt3,prompt4,prompt5])
         xyz_start.click(lambda: (gr.update(visible=True, interactive=False),gr.update(visible=True, interactive=True), gr.update(visible=True, interactive=True), gr.update(visible=False, interactive=False), [], True),
                               outputs=[xyz_start, stop_button, skip_button, generate_button, gallery, state_is_generating]) \
@@ -2071,7 +2074,7 @@ with shared.gradio_root:
                   outputs=[start_obp,generate_button, stop_button, skip_button, state_is_generating]) \
               .then(fn=update_history_link, outputs=history_link) \
               .then(fn=lambda: None, _js='playNotification').then(fn=lambda: None, _js='refresh_grid_delayed')
- 
+
         generate_button.click(lambda: (gr.update(visible=True, interactive=True), gr.update(visible=True, interactive=True), gr.update(visible=False, interactive=False), [], True),
                               outputs=[stop_button, skip_button, generate_button, gallery, state_is_generating]) \
             .then(fn=refresh_seed, inputs=[seed_random, image_seed], outputs=image_seed) \
@@ -2168,7 +2171,7 @@ with shared.gradio_root:
                 .then(fn=style_sorter.sort_styles, inputs=style_selections, outputs=style_selections, queue=False, show_progress=False) \
                 .then(lambda: None, _js='()=>{refresh_style_localization();}')
     gr.HTML("<div><p style='text-align:center;'>We are in <a href='https://t.me/+xlhhGmrz9SlmYzg6' target='_blank'>Telegram</a></p> </div>")
-  
+
 def dump_default_english_config():
     from modules.localization import dump_english_config
     dump_english_config(grh.all_components)
